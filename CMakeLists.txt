@@ -5,7 +5,11 @@ project(renderer VERSION 0.1.0
 
 add_subdirectory(libs)
 
-add_executable(renderer src/main.cpp src/shaders.cpp)
+file(COPY ${CMAKE_CURRENT_SOURCE_DIR}/shaders/basic.vs
+	 ${CMAKE_CURRENT_SOURCE_DIR}/shaders/basic.fs
+     DESTINATION ${CMAKE_CURRENT_BINARY_DIR}/shaders)
+
+add_executable(renderer src/main.cpp src/shaders.cpp src/utils.cpp)
 
 target_include_directories(renderer PUBLIC src)
 set_target_properties(renderer PROPERTIES CXX_STANDARD 17)
