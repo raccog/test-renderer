@@ -5,6 +5,11 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
+#include "camera.h"
 #include "shaders.h"
 #include "utils.h"
 
@@ -13,12 +18,62 @@ namespace fs = std::filesystem;
 constexpr uint32_t WIDTH = 800;
 constexpr uint32_t HEIGHT = 600;
 
+Camera camera(glm::vec3{0.0f, 0.0f, 3.0f});
+float lastX = WIDTH / 2.0f;
+float lastY = HEIGHT / 2.0f;
+bool firstMouse = true;
+
+float deltaTime = 0.0f;
+float lastFrame = 0.0f;
+
 void framebufferSizeCallback(GLFWwindow *window, int width, int height) {
 #ifdef __APPLE__
 	glViewport(0, 0, width * 2, height * 2);
 #else
     glViewport(0, 0, width, height);
 #endif
+}
+
+void mouseCallback(GLFWwindow *window, double xPosIn, double yPosIn) {
+    float xPos = static_cast<float>(xPosIn);
+    float yPos = static_cast<float>(yPosIn);
+
+    if (firstMouse) {
+        lastX = xPos;
+        lastY = yPos;
+        firstMouse = false;
+    }
+
+    float xOffset = xPos - lastX;
+    float yOffset = lastY - yPos;
+
+    lastX = xPos;
+    lastY = yPos;
+
+    camera.rotateCamera(xOffset, yOffset);
+}
+
+void processInput(GLFWwindow *window) {
+    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
+        glfwSetWindowShouldClose(window, true);
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
+        camera.movePosition(Movement::Forward, deltaTime);
+    } 
+    if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
+        camera.movePosition(Movement::Backward, deltaTime);
+    }
+    if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
+        camera.movePosition(Movement::Left, deltaTime);
+    }
+    if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
+        camera.movePosition(Movement::Right, deltaTime);
+    }
+}
+
+void scrollCallback(GLFWwindow *window, double _, double yOffset) {
+    camera.zoomCamera(static_cast<float>(yOffset));
 }
 
 int main() {
@@ -60,6 +115,12 @@ int main() {
 
     // set glfw callbacks
     glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
+    glfwSetCursorPosCallback(window, mouseCallback);
+    glfwSetScrollCallback(window, scrollCallback);
+
+    glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
+
+    glEnable(GL_DEPTH_TEST);
 	
 	// triangle vertices and indices
 	constexpr float vertices[] = {
@@ -101,13 +162,26 @@ int main() {
 
     // main loop
     while (!glfwWindowShouldClose(window)) {
+        float currentFrame = static_cast<float>(glfwGetTime());
+        deltaTime = currentFrame - lastFrame;
+        lastFrame = currentFrame;
+
+        processInput(window);
+
         // set the screen to a static color
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
-        glClear(GL_COLOR_BUFFER_BIT);
+        glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
 		// draw triangle
 		shader.bind();
+        glm::mat4 projection = glm::perspective(glm::radians(camera.zoom), static_cast<float>(WIDTH) / static_cast<float>(HEIGHT), 0.1f, 100.0f);
+        shader.setMat4("projection", projection);
+        glm::mat4 view = camera.getViewMatrix();
+        shader.setMat4("view", view);
 		glBindVertexArray(vao);
+        glm::mat4 model = glm::mat4{1.0f};
+        model = glm::translate(model, glm::vec3{0.0f, 0.0f, 0.0f});
+        shader.setMat4("model", model);
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
         // swap buffers and poll events
