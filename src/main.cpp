@@ -19,6 +19,8 @@ constexpr uint32_t WIDTH = 800;
 constexpr uint32_t HEIGHT = 600;
 
 Camera camera(glm::vec3{0.0f, 0.0f, 3.0f});
+Shader shader(0);
+
 float lastX = WIDTH / 2.0f;
 float lastY = HEIGHT / 2.0f;
 bool firstMouse = true;
@@ -69,6 +71,13 @@ void processInput(GLFWwindow *window) {
     }
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
         camera.movePosition(Movement::Right, deltaTime);
+    }
+
+    if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) {
+        // TODO: Delete previous shader
+        std::string vertexSource = utils::fileReadString(fs::path{"shaders/basic.vs"});
+        std::string fragmentSource = utils::fileReadString(fs::path{"shaders/basic.fs"});
+        shader = Shader::createProgram(vertexSource, fragmentSource);
     }
 }
 
@@ -158,7 +167,7 @@ int main() {
 	// compile and link shader program
 	std::string vertexSource = utils::fileReadString(fs::path{"shaders/basic.vs"});
 	std::string fragmentSource = utils::fileReadString(fs::path{"shaders/basic.fs"});
-	Shader shader = Shader::createProgram(vertexSource, fragmentSource);
+	shader = Shader::createProgram(vertexSource, fragmentSource);
 
     // main loop
     while (!glfwWindowShouldClose(window)) {
