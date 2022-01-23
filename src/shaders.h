@@ -18,6 +18,8 @@ public:
 
 	void bind() const;
 
+    void deleteShader();
+
 	inline uint32_t id() const {
 		return m_id;
 	}

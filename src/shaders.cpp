@@ -64,6 +64,11 @@ void Shader::bind() const {
 	glUseProgram(m_id);
 }
 
+void Shader::deleteShader() {
+    glDeleteProgram(m_id);
+    m_id = 0;
+}
+
 void Shader::unbind() const {
 	glUseProgram(0);
 }

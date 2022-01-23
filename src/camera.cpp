@@ -3,7 +3,7 @@
 #include <glm/gtc/matrix_transform.hpp>
 
 Camera::Camera(glm::vec3 position, glm::vec3 up, float yaw, float pitch) 
-        : front{glm::vec3{0.0f, 0.0f, -1.0f}}, movementSpeed{SPEED}, mouseSensitivity{SENSITIVITY}, zoom{ZOOM} {
+        : front{glm::vec3{0.0f, 0.0f, -1.0f}}, movementSpeed{SPEED}, mouseSensitivity{SENSITIVITY}, zoomOffset{ZOOM} {
     this->position = position;
     this->worldUp = up;
     this->yaw = yaw;
@@ -15,7 +15,7 @@ glm::mat4 Camera::getViewMatrix() const {
     return glm::lookAt(position, position + front, up);
 }
 
-void Camera::movePosition(Movement movement, float deltaTime) {
+void Camera::move(Movement movement, float deltaTime) {
     const float velocity = movementSpeed * deltaTime;
     switch (movement) {
         case Movement::Forward:
@@ -33,7 +33,7 @@ void Camera::movePosition(Movement movement, float deltaTime) {
     }
 }
 
-void Camera::rotateCamera(float xOffset, float yOffset, bool constrainPitch) {
+void Camera::rotate(float xOffset, float yOffset, bool constrainPitch) {
     xOffset *= mouseSensitivity;
     yOffset *= mouseSensitivity;
 
@@ -61,11 +61,11 @@ void Camera::updateVectors() {
     up = glm::normalize(glm::cross(right, this->front));
 }
 
-void Camera::zoomCamera(float offset) {
-    zoom -= offset;
-    if (zoom < 1.0f) {
-        zoom = 1.0f;
-    } else if (zoom > 45.0f) {
-        zoom = 45.0f;
+void Camera::zoom(float offset) {
+    zoomOffset -= offset;
+    if (zoomOffset < 1.0f) {
+        zoomOffset = 1.0f;
+    } else if (zoomOffset > 45.0f) {
+        zoomOffset = 45.0f;
     }
 }

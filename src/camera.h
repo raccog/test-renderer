@@ -1,7 +1,11 @@
+/*
+ *  Derived from https://learnopengl.com/Getting-started/Camera
+ */
 #pragma once
 
 #include <glm/glm.hpp>
 
+// Movements in a 3D environment
 enum class Movement {
     Forward,
     Backward,
@@ -9,12 +13,14 @@ enum class Movement {
     Right
 };
 
+// Camera constants
 constexpr float YAW = -90.0f;
 constexpr float PITCH = 0.0f;
 constexpr float SPEED = 2.5f;
 constexpr float SENSITIVITY = 0.1f;
 constexpr float ZOOM = 45.0f;
 
+// A viewpoint in a 3D environment
 class Camera {
 public:
     glm::vec3 position;
@@ -26,17 +32,17 @@ public:
     float pitch;
     float movementSpeed;
     float mouseSensitivity;
-    float zoom;
+    float zoomOffset;
 
     Camera(glm::vec3 position = glm::vec3{0.0f, 0.0f, 0.0f}, glm::vec3 up = glm::vec3{0.0f, 1.0f, 0.0f}, float yaw = YAW, float pitch = PITCH);
 
     glm::mat4 getViewMatrix() const;
 
-    void movePosition(Movement movement, float deltaTime);
+    void move(Movement movement, float deltaTime);
 
-    void rotateCamera(float xOffset, float yOffset, bool constrainPitch = true);
+    void rotate(float xOffset, float yOffset, bool constrainPitch = true);
 
-    void zoomCamera(float offset);
+    void zoom(float offset);
 
 private:
     void updateVectors();

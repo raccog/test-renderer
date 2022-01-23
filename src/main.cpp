@@ -4,7 +4,6 @@
 
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
-
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
@@ -15,19 +14,32 @@
 
 namespace fs = std::filesystem;
 
+// Screen size
 constexpr uint32_t WIDTH = 800;
 constexpr uint32_t HEIGHT = 600;
 
+/*
+ *  Globals
+ */
+
+// Class globals
 Camera camera(glm::vec3{0.0f, 0.0f, 3.0f});
 Shader shader(0);
 
+// Mouse globals
 float lastX = WIDTH / 2.0f;
 float lastY = HEIGHT / 2.0f;
 bool firstMouse = true;
 
+// Time globals
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
+/*
+ *  Callbacks
+ */
+
+// Called when window is resized by used
 void framebufferSizeCallback(GLFWwindow *window, int width, int height) {
 #ifdef __APPLE__
 	glViewport(0, 0, width * 2, height * 2);
@@ -36,6 +48,7 @@ void framebufferSizeCallback(GLFWwindow *window, int width, int height) {
 #endif
 }
 
+// Called when the mouse is moved
 void mouseCallback(GLFWwindow *window, double xPosIn, double yPosIn) {
     float xPos = static_cast<float>(xPosIn);
     float yPos = static_cast<float>(yPosIn);
@@ -52,38 +65,53 @@ void mouseCallback(GLFWwindow *window, double xPosIn, double yPosIn) {
     lastX = xPos;
     lastY = yPos;
 
-    camera.rotateCamera(xOffset, yOffset);
+    camera.rotate(xOffset, yOffset);
 }
 
+void scrollCallback(GLFWwindow *window, double _, double yOffset) {
+    camera.zoom(static_cast<float>(yOffset));
+}
+
+/*
+ *  Other Functions
+ */
+
+// Reads inputs to update global state
 void processInput(GLFWwindow *window) {
+    // Close window on ESC
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
         glfwSetWindowShouldClose(window, true);
     }
 
+    // Move camera
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
-        camera.movePosition(Movement::Forward, deltaTime);
+        camera.move(Movement::Forward, deltaTime);
     } 
     if (glfwGetKey(window, GLFW_KEY_S) == GLFW_PRESS) {
-        camera.movePosition(Movement::Backward, deltaTime);
+        camera.move(Movement::Backward, deltaTime);
     }
     if (glfwGetKey(window, GLFW_KEY_A) == GLFW_PRESS) {
-        camera.movePosition(Movement::Left, deltaTime);
+        camera.move(Movement::Left, deltaTime);
     }
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
-        camera.movePosition(Movement::Right, deltaTime);
+        camera.move(Movement::Right, deltaTime);
     }
 
+    // Recompile shaders on R
     if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) {
-        // TODO: Delete previous shader
+        // delete old shader
+        shader.deleteShader();
+        
+        // recompile shader
         std::string vertexSource = utils::fileReadString(fs::path{"shaders/basic.vs"});
         std::string fragmentSource = utils::fileReadString(fs::path{"shaders/basic.fs"});
         shader = Shader::createProgram(vertexSource, fragmentSource);
     }
 }
 
-void scrollCallback(GLFWwindow *window, double _, double yOffset) {
-    camera.zoomCamera(static_cast<float>(yOffset));
-}
+/*
+ *  Main function
+ */
 
 int main() {
     // initialize glfw library
@@ -127,11 +155,13 @@ int main() {
     glfwSetCursorPosCallback(window, mouseCallback);
     glfwSetScrollCallback(window, scrollCallback);
 
+    // Capture cursor
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
+    // Enable depth buffer
     glEnable(GL_DEPTH_TEST);
 	
-	// triangle vertices and indices
+	// vertices and indices
 	constexpr float vertices[] = {
 		 0.5f,  0.5f, 0.0f,  // top right
 		 0.5f, -0.5f, 0.0f,  // bottom right
@@ -171,32 +201,48 @@ int main() {
 
     // main loop
     while (!glfwWindowShouldClose(window)) {
+        // update time globals
         float currentFrame = static_cast<float>(glfwGetTime());
         deltaTime = currentFrame - lastFrame;
         lastFrame = currentFrame;
 
+        // read input and update global state
         processInput(window);
 
         // set the screen to a static color
         glClearColor(0.2f, 0.3f, 0.3f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-		// draw triangle
+        /*
+         *  Draw triangles
+         */
+
+        // bind opengl objects
 		shader.bind();
-        glm::mat4 projection = glm::perspective(glm::radians(camera.zoom), static_cast<float>(WIDTH) / static_cast<float>(HEIGHT), 0.1f, 100.0f);
+		glBindVertexArray(vao);
+
+        // set shader matrices
+        glm::mat4 projection = glm::perspective(glm::radians(camera.zoomOffset), static_cast<float>(WIDTH) / static_cast<float>(HEIGHT), 0.1f, 100.0f);
         shader.setMat4("projection", projection);
         glm::mat4 view = camera.getViewMatrix();
         shader.setMat4("view", view);
-		glBindVertexArray(vao);
         glm::mat4 model = glm::mat4{1.0f};
         model = glm::translate(model, glm::vec3{0.0f, 0.0f, 0.0f});
         shader.setMat4("model", model);
+
+        // draw
 		glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, 0);
 
         // swap buffers and poll events
         glfwSwapBuffers(window);
         glfwPollEvents();
     }
+    
+    // delete opengl objects
+    shader.deleteShader();
+    glDeleteBuffers(1, &ebo);
+    glDeleteBuffers(1, &vbo);
+    glDeleteVertexArrays(1, &vao);
 
     // exit glfw
     glfwTerminate();
