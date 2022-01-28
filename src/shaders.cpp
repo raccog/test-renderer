@@ -3,9 +3,11 @@
 #include <iostream>
 
 #include "glad/glad.h"
+#include "spdlog/spdlog.h"
 
 Shader Shader::createProgram(const std::string &vertexSource, const std::string &fragmentSource) {
 	// compile vertex shader source code
+    spdlog::debug("Compiling vertex shader");
 	uint32_t vertexShader = glCreateShader(GL_VERTEX_SHADER);
 	const char *vertexSource_c_str = vertexSource.c_str();
 	glShaderSource(vertexShader, 1, &vertexSource_c_str, nullptr);
@@ -17,12 +19,12 @@ Shader Shader::createProgram(const std::string &vertexSource, const std::string 
 	glGetShaderiv(vertexShader, GL_COMPILE_STATUS, &success);
 	if (!success) {
 		glGetShaderInfoLog(vertexShader, 512, nullptr, infoLog);
-		// TODO: log here
-		std::cout << "Vertex shader failed to compile\n";
+        spdlog::critical("Vertex shader failed to compile: {}", infoLog);
 		throw ShaderCompileError(ShaderType::Vertex);
 	}
 
-	// compile vertex shader source code
+	// compile fragment shader source code
+    spdlog::debug("Compiling fragment shader");
 	uint32_t fragmentShader = glCreateShader(GL_FRAGMENT_SHADER);
 	const char *fragmentSource_c_str = fragmentSource.c_str();
 	glShaderSource(fragmentShader, 1, &fragmentSource_c_str, nullptr);
@@ -32,12 +34,12 @@ Shader Shader::createProgram(const std::string &vertexSource, const std::string 
 	glGetShaderiv(fragmentShader, GL_COMPILE_STATUS, &success);
 	if (!success) {
 		glGetShaderInfoLog(fragmentShader, 512, nullptr, infoLog);
-		// TODO: log here
-		std::cout << "Fragment shader failed to compile\n";
+        spdlog::critical("Fragment shader failed to compile: {}", infoLog);
 		throw ShaderCompileError(ShaderType::Fragment);
 	}
 
 	// link final shader program
+    spdlog::debug("Linking final shader program");
 	uint32_t shaderProgram = glCreateProgram();
 	glAttachShader(shaderProgram, vertexShader);
 	glAttachShader(shaderProgram, fragmentShader);
@@ -47,13 +49,13 @@ Shader Shader::createProgram(const std::string &vertexSource, const std::string 
 	glGetProgramiv(shaderProgram, GL_LINK_STATUS, &success);
 	if (!success) {
 		glGetProgramInfoLog(shaderProgram, 512, nullptr, infoLog);
-		// TODO: log here
-		std::cout << "Shader program failed to link\n";
+        spdlog::critical("Shader program linking failed: {}", infoLog);
 		throw ShaderLinkError();
 	}
 
 	// individual shaders are not needed after the final
 	// program has successfully been linked
+    spdlog::debug("Shader program successfully compiled");
 	glDeleteShader(vertexShader);
 	glDeleteShader(fragmentShader);
 

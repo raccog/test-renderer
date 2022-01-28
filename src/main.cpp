@@ -8,6 +8,8 @@
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
+#include "spdlog/spdlog.h"
+
 #include "camera.h"
 #include "shaders.h"
 #include "utils.h"
@@ -41,6 +43,7 @@ float lastFrame = 0.0f;
 
 // Called when window is resized by used
 void framebufferSizeCallback(GLFWwindow *window, int width, int height) {
+    spdlog::debug("Window resized. Setting OpenGL viewport");
 #ifdef __APPLE__
 	glViewport(0, 0, width * 2, height * 2);
 #else
@@ -72,17 +75,34 @@ void scrollCallback(GLFWwindow *window, double _, double yOffset) {
     camera.zoom(static_cast<float>(yOffset));
 }
 
+void keyCallback(GLFWwindow *window, int key, int scancode, int action, int mods) {
+    if (action == GLFW_PRESS) {
+        // Close window on ESC
+        if (key == GLFW_KEY_ESCAPE) {
+            glfwSetWindowShouldClose(window, true);
+        }
+
+        // Recompile shaders on R
+        if (key == GLFW_KEY_R) {
+            // delete old shader
+            spdlog::debug("Recompiling shader program");
+            shader.deleteShader();
+            
+            // recompile shader
+            std::string vertexSource = utils::fileReadString(fs::path{"shaders/basic.vs"});
+            std::string fragmentSource = utils::fileReadString(fs::path{"shaders/basic.fs"});
+            shader = Shader::createProgram(vertexSource, fragmentSource);
+        }
+    }
+}
+
+
 /*
  *  Other Functions
  */
 
 // Reads inputs to update global state
 void processInput(GLFWwindow *window) {
-    // Close window on ESC
-    if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS) {
-        glfwSetWindowShouldClose(window, true);
-    }
-
     // Move camera
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS) {
         camera.move(Movement::Forward, deltaTime);
@@ -96,17 +116,6 @@ void processInput(GLFWwindow *window) {
     if (glfwGetKey(window, GLFW_KEY_D) == GLFW_PRESS) {
         camera.move(Movement::Right, deltaTime);
     }
-
-    // Recompile shaders on R
-    if (glfwGetKey(window, GLFW_KEY_R) == GLFW_PRESS) {
-        // delete old shader
-        shader.deleteShader();
-        
-        // recompile shader
-        std::string vertexSource = utils::fileReadString(fs::path{"shaders/basic.vs"});
-        std::string fragmentSource = utils::fileReadString(fs::path{"shaders/basic.fs"});
-        shader = Shader::createProgram(vertexSource, fragmentSource);
-    }
 }
 
 /*
@@ -114,7 +123,16 @@ void processInput(GLFWwindow *window) {
  */
 
 int main() {
+    spdlog::info("Starting renderer test program");
+
+    // Set logging configuration
+#ifdef _DEBUG
+    spdlog::info("Running in debug mode");
+    spdlog::set_level(spdlog::level::debug);
+#endif
+
     // initialize glfw library
+    spdlog::debug("Initializing GLFW");
     glfwInit();
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
@@ -124,19 +142,22 @@ int main() {
 #endif
 
     // create glfw window
+    spdlog::debug("Creating GLFW window");
     GLFWwindow *window = glfwCreateWindow(WIDTH, HEIGHT, "Test Renderer", nullptr, nullptr);
     if (!window) {
-        std::cout << "glfwCreateWindow() failed to create a window\n";
+        spdlog::critical("Failed to create a GLFW window");
         glfwTerminate();
         return -1;
     }
 
     // set opengl context
+    spdlog::debug("Setting OpenGL context");
     glfwMakeContextCurrent(window);
 
     // get opengl function addresses using glad
+    spdlog::debug("Retrieving OpenGL function pointers using glad loader");
     if (!gladLoadGLLoader((GLADloadproc)glfwGetProcAddress)) {
-        std::cout << "gladLoadGLLoader() failed to load OpenGL functions\n";
+        spdlog::critical("Failed to retrieve OpenGL function pointers");
         glfwTerminate();
         return -1;
     }
@@ -144,6 +165,7 @@ int main() {
     // set opengl viewport
 	// apple displays that use retina have double resolution
 	// TODO: detect retina display or get window size from glfw
+    spdlog::debug("Setting OpenGL viewport");
 #ifdef __APPLE__
 	glViewport(0, 0, WIDTH * 2, HEIGHT * 2);
 #else
@@ -151,11 +173,14 @@ int main() {
 #endif
 
     // set glfw callbacks
+    spdlog::debug("Setting GLFW callbacks");
     glfwSetFramebufferSizeCallback(window, framebufferSizeCallback);
     glfwSetCursorPosCallback(window, mouseCallback);
     glfwSetScrollCallback(window, scrollCallback);
+    glfwSetKeyCallback(window, keyCallback);
 
     // Capture cursor
+    spdlog::debug("Setting OpenGL and GLFW configuration");
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
     // Enable depth buffer
@@ -174,6 +199,7 @@ int main() {
 	};
 
 	// setup VAO
+    spdlog::debug("Setting up VAO, VBO, and EBO");
 	GLuint vao;
 	glGenVertexArrays(1, &vao);
 	glBindVertexArray(vao);
@@ -195,6 +221,7 @@ int main() {
 	glEnableVertexAttribArray(0);
 
 	// compile and link shader program
+    spdlog::debug("Compiling shader program");
 	std::string vertexSource = utils::fileReadString(fs::path{"shaders/basic.vs"});
 	std::string fragmentSource = utils::fileReadString(fs::path{"shaders/basic.fs"});
 	shader = Shader::createProgram(vertexSource, fragmentSource);
@@ -239,13 +266,17 @@ int main() {
     }
     
     // delete opengl objects
+    spdlog::debug("Deleting OpenGL objects");
     shader.deleteShader();
     glDeleteBuffers(1, &ebo);
     glDeleteBuffers(1, &vbo);
     glDeleteVertexArrays(1, &vao);
 
     // exit glfw
+    spdlog::debug("Terminating GLFW");
     glfwTerminate();
+
+    spdlog::info("Test renderer finished. Exiting.");
 
     return 0;
 }
